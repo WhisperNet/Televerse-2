@@ -1,0 +1,21 @@
+{
+  "name": "televerse-2",
+  "version": "1.0.0",
+  "description": "This repository hosts the infrastructure, backend microservices, and frontend for the CareForAll donation platform MVP. Follow `PHASE.md` for the execution plan.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "^0.10.9",
+    "dotenv": "^17.2.3",
+    "mongoose": "^8.20.1",
+    "winston": "^3.18.3"
+  }
+}
