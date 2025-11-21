@@ -1,0 +1,39 @@
+const promClient = require('prom-client');
+
+const register = new promClient.Registry();
+
+// Add default metrics (CPU, memory)
+promClient.collectDefaultMetrics({ register });
+
+// Custom counter for HTTP requests
+const httpRequestsTotal = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register],
+});
+
+// Outbox metrics
+const outboxPendingTotal = new promClient.Gauge({
+  name: 'outbox_pending_total',
+  help: 'Number of pending outbox events',
+  registers: [register],
+});
+
+// Middleware to track requests
+function metricsMiddleware(req, res, next) {
+  res.on('finish', () => {
+    httpRequestsTotal.inc({
+      method: req.method,
+      route: req.route ? req.route.path : req.path,
+      status_code: res.statusCode,
+    });
+  });
+  next();
+}
+
+module.exports = {
+  register,
+  metricsMiddleware,
+  outboxPendingTotal,
+};

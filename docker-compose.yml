@@ -150,13 +150,22 @@ services:
     image: node:18-alpine
     container_name: careforall-pledge
     working_dir: /usr/src/app
-    command: ['tail', '-f', '/dev/null']
+    command: ['sh', '-c', 'npm install && node src/index.js']
     volumes:
       - ./services/pledge-service:/usr/src/app
       - ./shared:/usr/src/app/shared
+      - /usr/src/app/node_modules
     environment:
       <<: *shared-env
       SERVICE_NAME: pledge-service
+      PORT: 3003
+    ports:
+      - '3003:3003'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - careforall-net
 
@@ -164,13 +173,21 @@ services:
     image: node:18-alpine
     container_name: careforall-payment
     working_dir: /usr/src/app
-    command: ['tail', '-f', '/dev/null']
+    command: ['sh', '-c', 'npm install && node src/index.js']
     volumes:
       - ./services/payment-service:/usr/src/app
       - ./shared:/usr/src/app/shared
+      - /usr/src/app/node_modules
     environment:
       <<: *shared-env
       SERVICE_NAME: payment-service
+      PORT: 3004
+      WEBHOOK_URL: http://payment-service:3004/payments/webhooks
+    ports:
+      - '3004:3004'
+    depends_on:
+      mongo:
+        condition: service_healthy
     networks:
       - careforall-net
 
@@ -178,13 +195,22 @@ services:
     image: node:18-alpine
     container_name: careforall-totals
     working_dir: /usr/src/app
-    command: ['tail', '-f', '/dev/null']
+    command: ['sh', '-c', 'npm install && node src/index.js']
     volumes:
       - ./services/totals-service:/usr/src/app
       - ./shared:/usr/src/app/shared
+      - /usr/src/app/node_modules
     environment:
       <<: *shared-env
       SERVICE_NAME: totals-service
+      PORT: 3005
+    ports:
+      - '3005:3005'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - careforall-net
 
