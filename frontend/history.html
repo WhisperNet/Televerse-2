@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Donation History - CareForAll</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>CareForAll</h1>
+        </div>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="create-campaign.html" id="createCampaignLink"
+            >Create Campaign</a
+          >
+          <a href="history.html">My Donations</a>
+          <a href="admin.html" id="adminLink" style="display: none">Admin</a>
+          <a href="login.html" id="loginLink">Login</a>
+          <a href="#" id="logoutLink" style="display: none">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <div class="page-header">
+        <h2>My Donation History</h2>
+        <button onclick="loadHistory()" class="btn-secondary">Refresh</button>
+      </div>
+
+      <div id="loadingState" class="loading">Loading donation history...</div>
+      <div id="errorState" class="error-message" style="display: none"></div>
+
+      <div id="historyContent" style="display: none">
+        <div class="history-summary">
+          <div class="summary-card">
+            <div class="summary-value" id="totalDonations">0</div>
+            <div class="summary-label">Total Donations</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-value" id="totalAmountDonated">$0</div>
+            <div class="summary-label">Total Amount</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-value" id="completedDonations">0</div>
+            <div class="summary-label">Completed</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Your Pledges</h3>
+          <div id="pledgesList" class="pledges-list"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2025 CareForAll - Built for API Avengers Hackathon</p>
+      </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+      let pledges = [];
+      let campaigns = {};
+
+      async function loadHistory() {
+        const loadingState = document.getElementById('loadingState');
+        const errorState = document.getElementById('errorState');
+        const historyContent = document.getElementById('historyContent');
+
+        try {
+          loadingState.style.display = 'block';
+          errorState.style.display = 'none';
+          historyContent.style.display = 'none';
+
+          // Check if user is logged in or has anonymous session
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          const sessionId = localStorage.getItem('anonymousSessionId');
+
+          if (!user.email && !sessionId) {
+            errorState.textContent =
+              'No donation history found. Please login or make a donation.';
+            errorState.style.display = 'block';
+            loadingState.style.display = 'none';
+            return;
+          }
+
+          // For demo purposes, since we don't have a pledges list endpoint,
+          // we'll need to note this limitation
+          errorState.textContent =
+            'Pledge history endpoint not yet implemented. This feature requires adding GET /api/pledges?userId or GET /api/pledges?sessionId endpoint.';
+          errorState.style.display = 'block';
+          errorState.className = 'info-message';
+          loadingState.style.display = 'none';
+
+          // Show placeholder content
+          historyContent.style.display = 'block';
+          document.getElementById('totalDonations').textContent = '-';
+          document.getElementById('totalAmountDonated').textContent = '-';
+          document.getElementById('completedDonations').textContent = '-';
+
+          const pledgesList = document.getElementById('pledgesList');
+          pledgesList.innerHTML = `
+                    <div class="placeholder-message">
+                        <p><strong>Feature Coming Soon</strong></p>
+                        <p>To view your donation history, the backend needs to implement:</p>
+                        <ul style="text-align: left; display: inline-block;">
+                            <li>GET /api/pledges?userId={userId} - for authenticated users</li>
+                            <li>GET /api/pledges?sessionId={sessionId} - for anonymous donations</li>
+                        </ul>
+                        <p>For now, you can view individual pledge details by keeping the pledge ID from the donation confirmation.</p>
+                    </div>
+                `;
+        } catch (error) {
+          console.error('Error loading history:', error);
+          loadingState.style.display = 'none';
+          errorState.style.display = 'block';
+          errorState.textContent = 'Failed to load donation history.';
+        }
+      }
+
+      function renderPledgeCard(pledge, campaign) {
+        const card = document.createElement('div');
+        card.className = 'pledge-card';
+
+        const statusClass = pledge.status.toLowerCase();
+        const statusText = pledge.status;
+        const amount = pledge.amount;
+        const date = new Date(pledge.createdAt).toLocaleString();
+
+        card.innerHTML = `
+                <div class="pledge-header">
+                    <h4>${escapeHtml(campaign.title)}</h4>
+                    <span class="status-badge status-${statusClass}">${statusText}</span>
+                </div>
+                <div class="pledge-details">
+                    <div class="pledge-detail-item">
+                        <span class="detail-label">Amount:</span>
+                        <span class="detail-value">$${amount.toLocaleString()}</span>
+                    </div>
+                    <div class="pledge-detail-item">
+                        <span class="detail-label">Date:</span>
+                        <span class="detail-value">${date}</span>
+                    </div>
+                    <div class="pledge-detail-item">
+                        <span class="detail-label">Pledge ID:</span>
+                        <span class="detail-value pledge-id">${
+                          pledge._id
+                        }</span>
+                    </div>
+                </div>
+                <div class="pledge-actions">
+                    <a href="campaign-detail.html?id=${
+                      campaign._id
+                    }" class="btn-small">View Campaign</a>
+                </div>
+            `;
+
+        return card;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', () => {
+        initAuth();
+        loadHistory();
+      });
+    </script>
+  </body>
+</html>

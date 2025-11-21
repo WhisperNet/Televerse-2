@@ -99,6 +99,9 @@ services:
     depends_on:
       - identity-service
       - campaign-service
+      - pledge-service
+      - payment-service
+      - totals-service
     networks:
       - careforall-net
 
@@ -215,11 +218,16 @@ services:
       - careforall-net
 
   frontend:
-    image: alpine:3.20
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: careforall-frontend
-    command: ['tail', '-f', '/dev/null']
+    ports:
+      - '8081:80'
     networks:
       - careforall-net
+    depends_on:
+      - nginx
 
 networks:
   careforall-net:

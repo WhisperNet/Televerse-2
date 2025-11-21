@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - CareForAll</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>CareForAll</h1>
+        </div>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <div class="auth-container">
+        <div class="auth-tabs">
+          <button id="loginTab" class="auth-tab active">Login</button>
+          <button id="registerTab" class="auth-tab">Register</button>
+        </div>
+
+        <div id="loginForm" class="auth-form">
+          <h2>Login to CareForAll</h2>
+          <div
+            id="loginError"
+            class="error-message"
+            style="display: none"
+          ></div>
+
+          <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+              <label for="loginEmail">Email</label>
+              <input
+                type="email"
+                id="loginEmail"
+                required
+                placeholder="your.email@example.com"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="loginPassword">Password</label>
+              <input
+                type="password"
+                id="loginPassword"
+                required
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button type="submit" class="btn-primary btn-large" id="loginBtn">
+              Login
+            </button>
+          </form>
+        </div>
+
+        <div id="registerForm" class="auth-form" style="display: none">
+          <h2>Create Account</h2>
+          <div
+            id="registerError"
+            class="error-message"
+            style="display: none"
+          ></div>
+          <div
+            id="registerSuccess"
+            class="success-message"
+            style="display: none"
+          >
+            Account created successfully! Redirecting to login...
+          </div>
+
+          <form onsubmit="handleRegister(event)">
+            <div class="form-group">
+              <label for="registerName">Name</label>
+              <input
+                type="text"
+                id="registerName"
+                required
+                placeholder="Your full name"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="registerEmail">Email</label>
+              <input
+                type="email"
+                id="registerEmail"
+                required
+                placeholder="your.email@example.com"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="registerPassword">Password</label>
+              <input
+                type="password"
+                id="registerPassword"
+                required
+                minlength="6"
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="registerPasswordConfirm">Confirm Password</label>
+              <input
+                type="password"
+                id="registerPasswordConfirm"
+                required
+                placeholder="Re-enter password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="btn-primary btn-large"
+              id="registerBtn"
+            >
+              Register
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2025 CareForAll - Built for API Avengers Hackathon</p>
+      </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+      // Tab switching
+      document
+        .getElementById('loginTab')
+        .addEventListener('click', function () {
+          showLoginForm();
+        });
+
+      document
+        .getElementById('registerTab')
+        .addEventListener('click', function () {
+          showRegisterForm();
+        });
+
+      function showLoginForm() {
+        document.getElementById('loginTab').classList.add('active');
+        document.getElementById('registerTab').classList.remove('active');
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+      }
+
+      function showRegisterForm() {
+        document.getElementById('registerTab').classList.add('active');
+        document.getElementById('loginTab').classList.remove('active');
+        document.getElementById('registerForm').style.display = 'block';
+        document.getElementById('loginForm').style.display = 'none';
+      }
+
+      // Handle login
+      async function handleLogin(event) {
+        event.preventDefault();
+
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const errorDiv = document.getElementById('loginError');
+        const loginBtn = document.getElementById('loginBtn');
+
+        errorDiv.style.display = 'none';
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Logging in...';
+
+        try {
+          const response = await api.post('/api/auth/login', {
+            email,
+            password,
+          });
+
+          if (response.token) {
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('user', JSON.stringify(response.user));
+
+            // Redirect to homepage or return URL
+            const returnUrl =
+              new URLSearchParams(window.location.search).get('return') ||
+              'index.html';
+            window.location.href = returnUrl;
+          } else {
+            throw new Error('No token received');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          errorDiv.textContent =
+            error.message || 'Login failed. Please check your credentials.';
+          errorDiv.style.display = 'block';
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Login';
+        }
+      }
+
+      // Handle register
+      async function handleRegister(event) {
+        event.preventDefault();
+
+        const name = document.getElementById('registerName').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        const passwordConfirm = document.getElementById(
+          'registerPasswordConfirm'
+        ).value;
+        const errorDiv = document.getElementById('registerError');
+        const successDiv = document.getElementById('registerSuccess');
+        const registerBtn = document.getElementById('registerBtn');
+
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+
+        // Validate password match
+        if (password !== passwordConfirm) {
+          errorDiv.textContent = 'Passwords do not match';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        registerBtn.disabled = true;
+        registerBtn.textContent = 'Creating account...';
+
+        try {
+          const response = await api.post('/api/auth/register', {
+            name,
+            email,
+            password,
+          });
+
+          if (response.token) {
+            // Auto-login after registration
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('user', JSON.stringify(response.user));
+
+            successDiv.style.display = 'block';
+
+            // Redirect after 1 second
+            setTimeout(() => {
+              const returnUrl =
+                new URLSearchParams(window.location.search).get('return') ||
+                'index.html';
+              window.location.href = returnUrl;
+            }, 1000);
+          } else {
+            throw new Error('Registration failed');
+          }
+        } catch (error) {
+          console.error('Registration error:', error);
+          errorDiv.textContent =
+            error.message ||
+            'Registration failed. Email may already be in use.';
+          errorDiv.style.display = 'block';
+          registerBtn.disabled = false;
+          registerBtn.textContent = 'Register';
+        }
+      }
+
+      // Check if already logged in
+      document.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Already logged in, redirect to home
+          window.location.href = 'index.html';
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - CareForAll</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>CareForAll</h1>
+        </div>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="create-campaign.html" id="createCampaignLink"
+            >Create Campaign</a
+          >
+          <a href="history.html">My Donations</a>
+          <a href="admin.html" id="adminLink">Admin</a>
+          <a href="#" id="logoutLink">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <div class="page-header">
+        <h2>Admin Dashboard</h2>
+        <button onclick="loadDashboard()" class="btn-secondary">Refresh</button>
+      </div>
+
+      <div id="loadingState" class="loading">Loading dashboard...</div>
+      <div id="errorState" class="error-message" style="display: none"></div>
+
+      <div id="dashboardContent" style="display: none">
+        <!-- Metrics Overview -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="totalCampaigns">0</div>
+            <div class="metric-label">Total Campaigns</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="activeCampaigns">0</div>
+            <div class="metric-label">Active Campaigns</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="totalPledgesCount">0</div>
+            <div class="metric-label">Total Pledges</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="totalAmountRaised">$0</div>
+            <div class="metric-label">Total Raised</div>
+          </div>
+        </div>
+
+        <!-- Campaigns Table -->
+        <div class="section">
+          <h3>All Campaigns</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Goal</th>
+                  <th>Raised</th>
+                  <th>Progress</th>
+                  <th>Status</th>
+                  <th>End Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="campaignsTableBody">
+                <tr>
+                  <td colspan="8" class="loading">Loading campaigns...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Pledges -->
+        <div class="section">
+          <h3>Recent Pledges</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Pledge ID</th>
+                  <th>Campaign</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Type</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="pledgesTableBody">
+                <tr>
+                  <td colspan="6" class="loading">Loading pledges...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2025 CareForAll - Built for API Avengers Hackathon</p>
+      </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+      let campaigns = [];
+      let pledges = [];
+
+      async function loadDashboard() {
+        const loadingState = document.getElementById('loadingState');
+        const errorState = document.getElementById('errorState');
+        const dashboardContent = document.getElementById('dashboardContent');
+
+        try {
+          loadingState.style.display = 'block';
+          errorState.style.display = 'none';
+
+          // Load campaigns
+          campaigns = await api.get('/api/campaigns');
+
+          // Load pledges (we'll need to add an endpoint for this or fetch individually)
+          // For now, we'll load pledges by fetching campaign details
+
+          loadingState.style.display = 'none';
+          dashboardContent.style.display = 'block';
+
+          await updateMetrics();
+          await renderCampaignsTable();
+          await loadRecentPledges();
+        } catch (error) {
+          console.error('Error loading dashboard:', error);
+          loadingState.style.display = 'none';
+          errorState.style.display = 'block';
+          errorState.textContent =
+            'Failed to load dashboard. Please check your admin privileges.';
+        }
+      }
+
+      async function updateMetrics() {
+        const totalCampaigns = campaigns.length;
+        const activeCampaigns = campaigns.filter(
+          (c) => c.status === 'active'
+        ).length;
+
+        // Calculate totals across all campaigns
+        let totalAmount = 0;
+        let totalPledges = 0;
+
+        for (const campaign of campaigns) {
+          try {
+            const totals = await api.get(`/api/totals/${campaign._id}`);
+            totalAmount += totals.totalAmount || 0;
+            totalPledges += totals.totalPledges || 0;
+          } catch (error) {
+            console.error(
+              `Error fetching totals for campaign ${campaign._id}:`,
+              error
+            );
+          }
+        }
+
+        document.getElementById('totalCampaigns').textContent = totalCampaigns;
+        document.getElementById('activeCampaigns').textContent =
+          activeCampaigns;
+        document.getElementById('totalPledgesCount').textContent = totalPledges;
+        document.getElementById(
+          'totalAmountRaised'
+        ).textContent = `$${totalAmount.toLocaleString()}`;
+      }
+
+      async function renderCampaignsTable() {
+        const tbody = document.getElementById('campaignsTableBody');
+        tbody.innerHTML = '';
+
+        if (campaigns.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8">No campaigns found</td></tr>';
+          return;
+        }
+
+        for (const campaign of campaigns) {
+          let raised = 0;
+          try {
+            const totals = await api.get(`/api/totals/${campaign._id}`);
+            raised = totals.totalAmount || 0;
+          } catch (error) {
+            console.error(
+              `Error fetching totals for campaign ${campaign._id}:`,
+              error
+            );
+          }
+
+          const progress = Math.min(
+            (raised / campaign.goalAmount) * 100,
+            100
+          ).toFixed(1);
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+                    <td>${escapeHtml(campaign.title)}</td>
+                    <td>${campaign.category || 'N/A'}</td>
+                    <td>$${campaign.goalAmount.toLocaleString()}</td>
+                    <td>$${raised.toLocaleString()}</td>
+                    <td>
+                        <div class="progress-bar-small">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <span class="progress-text">${progress}%</span>
+                    </td>
+                    <td><span class="status-badge status-${campaign.status}">${
+            campaign.status
+          }</span></td>
+                    <td>${new Date(campaign.endDate).toLocaleDateString()}</td>
+                    <td>
+                        <a href="campaign-detail.html?id=${
+                          campaign._id
+                        }" class="btn-small">View</a>
+                    </td>
+                `;
+          tbody.appendChild(row);
+        }
+      }
+
+      async function loadRecentPledges() {
+        const tbody = document.getElementById('pledgesTableBody');
+        tbody.innerHTML =
+          '<tr><td colspan="6" class="loading">Loading pledges...</td></tr>';
+
+        try {
+          // Since we don't have a pledges list endpoint, we'll show a placeholder
+          // In a real app, you'd add an endpoint like GET /api/pledges?limit=10
+          tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 20px;">
+                            Pledge history endpoint not yet implemented.<br>
+                            To view pledges, check individual campaign details.
+                        </td>
+                    </tr>
+                `;
+        } catch (error) {
+          console.error('Error loading pledges:', error);
+          tbody.innerHTML =
+            '<tr><td colspan="6">Failed to load pledges</td></tr>';
+        }
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', () => {
+        initAuth();
+
+        // Check if user is logged in and is admin
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!user.email) {
+          alert('Please login to access admin dashboard');
+          window.location.href = 'login.html?return=admin.html';
+          return;
+        }
+
+        // Note: In production, you'd check user.role === 'admin'
+        // For demo purposes, any logged-in user can access admin
+
+        loadDashboard();
+      });
+    </script>
+  </body>
+</html>

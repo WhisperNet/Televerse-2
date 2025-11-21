@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campaign Details - CareForAll</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>CareForAll</h1>
+        </div>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="create-campaign.html" id="createCampaignLink"
+            >Create Campaign</a
+          >
+          <a href="history.html">My Donations</a>
+          <a href="admin.html" id="adminLink" style="display: none">Admin</a>
+          <a href="login.html" id="loginLink">Login</a>
+          <a href="#" id="logoutLink" style="display: none">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <div id="loadingState" class="loading">Loading campaign details...</div>
+      <div id="errorState" class="error-message" style="display: none"></div>
+
+      <div id="campaignDetail" style="display: none">
+        <div class="campaign-detail-header">
+          <button onclick="window.location.href='index.html'" class="btn-back">
+            ← Back to Campaigns
+          </button>
+          <h2 id="campaignTitle"></h2>
+          <span id="campaignStatus" class="campaign-status"></span>
+        </div>
+
+        <div class="campaign-detail-content">
+          <div class="campaign-info">
+            <div class="info-section">
+              <h3>About This Campaign</h3>
+              <p id="campaignDescription"></p>
+            </div>
+
+            <div class="info-section">
+              <div class="campaign-meta">
+                <div class="meta-item">
+                  <span class="meta-label">Category:</span>
+                  <span id="campaignCategory"></span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">End Date:</span>
+                  <span id="campaignEndDate"></span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Goal Amount:</span>
+                  <span id="campaignGoal"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="info-section">
+              <h3>Progress</h3>
+              <div class="campaign-progress-large">
+                <div class="progress-stats">
+                  <div class="stat">
+                    <span class="stat-value" id="raisedAmount">$0</span>
+                    <span class="stat-label">Raised</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value" id="totalPledges">0</span>
+                    <span class="stat-label">Donations</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value" id="progressPercentage">0%</span>
+                    <span class="stat-label">Complete</span>
+                  </div>
+                </div>
+                <div class="progress-bar-large">
+                  <div
+                    id="progressFill"
+                    class="progress-fill"
+                    style="width: 0%"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="donation-panel">
+            <h3>Make a Donation</h3>
+
+            <div id="donationForm" class="donation-form">
+              <div class="form-group">
+                <label for="amount">Amount ($)</label>
+                <input
+                  type="number"
+                  id="amount"
+                  min="1"
+                  step="0.01"
+                  placeholder="Enter amount"
+                  required
+                />
+              </div>
+
+              <div class="form-group checkbox-group">
+                <label>
+                  <input type="checkbox" id="donateAnonymous" />
+                  Donate as Anonymous
+                </label>
+              </div>
+
+              <div id="anonymousFields" style="display: none">
+                <div class="form-group">
+                  <label for="anonName">Name</label>
+                  <input type="text" id="anonName" placeholder="Your name" />
+                </div>
+                <div class="form-group">
+                  <label for="anonEmail">Email</label>
+                  <input
+                    type="email"
+                    id="anonEmail"
+                    placeholder="your.email@example.com"
+                  />
+                </div>
+              </div>
+
+              <button id="submitDonation" class="btn-primary btn-large">
+                Create Pledge
+              </button>
+            </div>
+
+            <div id="paymentPanel" class="payment-panel" style="display: none">
+              <div class="success-message">
+                <h4>✓ Pledge Created Successfully!</h4>
+                <p>Pledge ID: <code id="pledgeId"></code></p>
+                <p>Amount: <strong id="pledgeAmount"></strong></p>
+                <p>
+                  Status: <span id="pledgeStatus" class="status-badge"></span>
+                </p>
+              </div>
+
+              <div class="payment-actions">
+                <button id="processPayment" class="btn-primary btn-large">
+                  Process Payment
+                </button>
+                <button onclick="location.reload()" class="btn-secondary">
+                  Make Another Donation
+                </button>
+              </div>
+
+              <div id="paymentProgress" style="display: none">
+                <div class="loading">Processing payment...</div>
+                <p id="paymentStatusText"></p>
+              </div>
+
+              <div
+                id="paymentComplete"
+                style="display: none"
+                class="success-message"
+              >
+                <h4>🎉 Payment Completed!</h4>
+                <p>Thank you for your generous donation!</p>
+                <p>
+                  Your pledge has been captured and will be reflected in the
+                  campaign totals shortly.
+                </p>
+                <button onclick="location.reload()" class="btn-primary">
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2025 CareForAll - Built for API Avengers Hackathon</p>
+      </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+      let campaign = null;
+      let pledgeData = null;
+      let paymentIntentId = null;
+      let totalsInterval = null;
+
+      async function loadCampaignDetails() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const campaignId = urlParams.get('id');
+
+        if (!campaignId) {
+          showError('No campaign ID provided');
+          return;
+        }
+
+        try {
+          campaign = await api.get(`/api/campaigns/${campaignId}`);
+
+          document.getElementById('loadingState').style.display = 'none';
+          document.getElementById('campaignDetail').style.display = 'block';
+
+          // Populate campaign details
+          document.getElementById('campaignTitle').textContent = campaign.title;
+          document.getElementById('campaignStatus').textContent =
+            campaign.status;
+          document.getElementById(
+            'campaignStatus'
+          ).className = `campaign-status status-${campaign.status}`;
+          document.getElementById('campaignDescription').textContent =
+            campaign.description;
+          document.getElementById('campaignCategory').textContent =
+            campaign.category || 'Medical';
+          document.getElementById('campaignEndDate').textContent = new Date(
+            campaign.endDate
+          ).toLocaleDateString();
+          document.getElementById(
+            'campaignGoal'
+          ).textContent = `$${campaign.goalAmount.toLocaleString()}`;
+
+          // Load and update totals
+          await updateTotals();
+
+          // Poll totals every 3 seconds
+          totalsInterval = setInterval(updateTotals, 3000);
+        } catch (error) {
+          console.error('Error loading campaign:', error);
+          showError('Failed to load campaign details');
+        }
+      }
+
+      async function updateTotals() {
+        if (!campaign) return;
+
+        try {
+          const totals = await api.get(`/api/totals/${campaign._id}`);
+          const raised = totals.totalAmount || 0;
+          const pledges = totals.totalPledges || 0;
+          const percentage = Math.min(
+            (raised / campaign.goalAmount) * 100,
+            100
+          );
+
+          document.getElementById(
+            'raisedAmount'
+          ).textContent = `$${raised.toLocaleString()}`;
+          document.getElementById('totalPledges').textContent = pledges;
+          document.getElementById(
+            'progressPercentage'
+          ).textContent = `${percentage.toFixed(1)}%`;
+          document.getElementById(
+            'progressFill'
+          ).style.width = `${percentage}%`;
+        } catch (error) {
+          console.error('Error updating totals:', error);
+        }
+      }
+
+      function showError(message) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorState').textContent = message;
+      }
+
+      // Anonymous checkbox handler
+      document
+        .getElementById('donateAnonymous')
+        .addEventListener('change', function () {
+          const anonymousFields = document.getElementById('anonymousFields');
+          anonymousFields.style.display = this.checked ? 'block' : 'none';
+        });
+
+      // Submit donation
+      document
+        .getElementById('submitDonation')
+        .addEventListener('click', async function () {
+          const amount = parseFloat(document.getElementById('amount').value);
+          const isAnonymous =
+            document.getElementById('donateAnonymous').checked;
+
+          if (!amount || amount <= 0) {
+            alert('Please enter a valid amount');
+            return;
+          }
+
+          this.disabled = true;
+          this.textContent = 'Creating pledge...';
+
+          try {
+            // Generate idempotency key
+            const idempotencyKey = generateUUID();
+
+            const pledgePayload = {
+              campaignId: campaign._id,
+              amount: amount,
+            };
+
+            if (isAnonymous) {
+              // Create or get anonymous session
+              let sessionId = localStorage.getItem('anonymousSessionId');
+              if (!sessionId) {
+                const sessionResponse = await api.post(
+                  '/api/auth/anonymous-session',
+                  {}
+                );
+                sessionId = sessionResponse.sessionId;
+                localStorage.setItem('anonymousSessionId', sessionId);
+              }
+              pledgePayload.sessionId = sessionId;
+            } else {
+              // Check if user is logged in
+              const token = localStorage.getItem('token');
+              if (!token) {
+                alert('Please login to make an authenticated donation');
+                window.location.href = 'login.html';
+                return;
+              }
+            }
+
+            // Create pledge
+            const response = await api.post('/api/pledges', pledgePayload, {
+              'Idempotency-Key': idempotencyKey,
+            });
+
+            pledgeData = response.pledge;
+
+            // Show payment panel
+            document.getElementById('donationForm').style.display = 'none';
+            document.getElementById('paymentPanel').style.display = 'block';
+            document.getElementById('pledgeId').textContent = pledgeData._id;
+            document.getElementById(
+              'pledgeAmount'
+            ).textContent = `$${pledgeData.amount}`;
+            document.getElementById('pledgeStatus').textContent =
+              pledgeData.status;
+            document.getElementById(
+              'pledgeStatus'
+            ).className = `status-badge status-${pledgeData.status.toLowerCase()}`;
+          } catch (error) {
+            console.error('Error creating pledge:', error);
+            alert('Failed to create pledge. Please try again.');
+            this.disabled = false;
+            this.textContent = 'Create Pledge';
+          }
+        });
+
+      // Process payment
+      document
+        .getElementById('processPayment')
+        .addEventListener('click', async function () {
+          this.disabled = true;
+          document.getElementById('paymentProgress').style.display = 'block';
+
+          try {
+            // Create payment intent
+            document.getElementById('paymentStatusText').textContent =
+              'Creating payment intent...';
+            const intentResponse = await api.post('/api/payments/intent', {
+              pledgeId: pledgeData._id,
+              amount: pledgeData.amount,
+            });
+
+            paymentIntentId = intentResponse.paymentIntentId;
+
+            // Authorize payment
+            document.getElementById('paymentStatusText').textContent =
+              'Authorizing payment...';
+            await api.post('/api/payments/authorize', {
+              paymentIntentId: paymentIntentId,
+            });
+
+            // Wait for webhook
+            await sleep(2500);
+            document.getElementById('paymentStatusText').textContent =
+              'Authorization confirmed...';
+
+            // Capture payment
+            document.getElementById('paymentStatusText').textContent =
+              'Capturing payment...';
+            await api.post('/api/payments/capture', {
+              paymentIntentId: paymentIntentId,
+            });
+
+            // Wait for webhook
+            await sleep(1500);
+
+            // Show success
+            document.getElementById('paymentProgress').style.display = 'none';
+            document.getElementById('paymentComplete').style.display = 'block';
+
+            // Update totals more frequently for a bit
+            for (let i = 0; i < 3; i++) {
+              await sleep(3000);
+              await updateTotals();
+            }
+          } catch (error) {
+            console.error('Error processing payment:', error);
+            alert('Payment failed. Please try again.');
+            this.disabled = false;
+            document.getElementById('paymentProgress').style.display = 'none';
+          }
+        });
+
+      function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+          /[xy]/g,
+          function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          }
+        );
+      }
+
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', () => {
+        initAuth();
+        loadCampaignDetails();
+      });
+
+      // Clean up interval on page unload
+      window.addEventListener('beforeunload', () => {
+        if (totalsInterval) {
+          clearInterval(totalsInterval);
+        }
+      });
+    </script>
+  </body>
+</html>

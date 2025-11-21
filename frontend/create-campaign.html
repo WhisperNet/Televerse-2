@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Campaign - CareForAll</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="nav-brand">
+          <h1>CareForAll</h1>
+        </div>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="create-campaign.html" id="createCampaignLink"
+            >Create Campaign</a
+          >
+          <a href="history.html">My Donations</a>
+          <a href="admin.html" id="adminLink" style="display: none">Admin</a>
+          <a href="login.html" id="loginLink">Login</a>
+          <a href="#" id="logoutLink" style="display: none">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <div class="page-header">
+        <button onclick="window.location.href='index.html'" class="btn-back">
+          ← Back
+        </button>
+        <h2>Create New Campaign</h2>
+      </div>
+
+      <div class="form-container">
+        <div
+          id="errorMessage"
+          class="error-message"
+          style="display: none"
+        ></div>
+        <div id="successMessage" class="success-message" style="display: none">
+          Campaign created successfully! Redirecting...
+        </div>
+
+        <form id="campaignForm" onsubmit="handleCreateCampaign(event)">
+          <div class="form-group">
+            <label for="title">Campaign Title *</label>
+            <input
+              type="text"
+              id="title"
+              required
+              maxlength="100"
+              placeholder="e.g., Help John's Cancer Treatment"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description *</label>
+            <textarea
+              id="description"
+              required
+              rows="5"
+              maxlength="1000"
+              placeholder="Tell people about your campaign and why you need support..."
+            ></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="goalAmount">Goal Amount ($) *</label>
+              <input
+                type="number"
+                id="goalAmount"
+                required
+                min="1"
+                step="0.01"
+                placeholder="10000"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="category">Category *</label>
+              <select id="category" required>
+                <option value="">Select category</option>
+                <option value="Medical">Medical</option>
+                <option value="Emergency">Emergency</option>
+                <option value="Surgery">Surgery</option>
+                <option value="Treatment">Treatment</option>
+                <option value="Rehabilitation">Rehabilitation</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="endDate">End Date *</label>
+            <input type="date" id="endDate" required />
+          </div>
+
+          <div class="form-actions">
+            <button
+              type="button"
+              onclick="window.location.href='index.html'"
+              class="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary" id="submitBtn">
+              Create Campaign
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2025 CareForAll - Built for API Avengers Hackathon</p>
+      </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+      // Set minimum end date to tomorrow
+      document.addEventListener('DOMContentLoaded', () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const minDate = tomorrow.toISOString().split('T')[0];
+        document.getElementById('endDate').setAttribute('min', minDate);
+
+        // Check authentication
+        initAuth();
+        if (!isAuthenticated()) {
+          alert('Please login to create a campaign');
+          window.location.href = 'login.html?return=create-campaign.html';
+        }
+      });
+
+      async function handleCreateCampaign(event) {
+        event.preventDefault();
+
+        const errorDiv = document.getElementById('errorMessage');
+        const successDiv = document.getElementById('successMessage');
+        const submitBtn = document.getElementById('submitBtn');
+
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+
+        // Validate authentication
+        if (!isAuthenticated()) {
+          alert('Please login to create a campaign');
+          window.location.href = 'login.html?return=create-campaign.html';
+          return;
+        }
+
+        // Get form data
+        const formData = {
+          title: document.getElementById('title').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          goalAmount: parseFloat(document.getElementById('goalAmount').value),
+          category: document.getElementById('category').value,
+          endDate: document.getElementById('endDate').value,
+        };
+
+        // Validate
+        if (
+          !formData.title ||
+          !formData.description ||
+          !formData.goalAmount ||
+          !formData.category ||
+          !formData.endDate
+        ) {
+          errorDiv.textContent = 'Please fill in all required fields';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (formData.goalAmount <= 0) {
+          errorDiv.textContent = 'Goal amount must be greater than 0';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+
+        try {
+          const response = await api.post('/api/campaigns', formData);
+
+          // Show success message
+          successDiv.style.display = 'block';
+
+          // Redirect to campaign detail page
+          setTimeout(() => {
+            window.location.href = `campaign-detail.html?id=${response._id}`;
+          }, 1500);
+        } catch (error) {
+          console.error('Error creating campaign:', error);
+          errorDiv.textContent =
+            error.message || 'Failed to create campaign. Please try again.';
+          errorDiv.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Campaign';
+        }
+      }
+
+      function isAuthenticated() {
+        return !!localStorage.getItem('token');
+      }
+    </script>
+  </body>
+</html>
